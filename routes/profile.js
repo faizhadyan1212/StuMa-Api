@@ -41,7 +41,7 @@ router.put('/', authenticate, (req, res) => {
 });
 
 // Change Password Route
-router.put('/change-password', authenticate, async (req, res) => {
+router.post('/change-password', authenticate, async (req, res) => {
     const userId = req.user.id;
     const { oldPassword, newPassword } = req.body;
 
