@@ -18,9 +18,16 @@ console.log('Initializing StuMa API...');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// **CORS Configuration**
+// const corsOptions = {
+//     origin: '*',  // Mengizinkan semua origin (bisa diganti dengan domain yang spesifik)
+//     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],  // Semua metode HTTP yang digunakan
+//     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],  // Header yang diizinkan
+// };
+
 // Middleware
 app.use(bodyParser.json());
-app.use(cors());
+app.use(cors());  // Aktifkan CORS dengan konfigurasi
 
 // Debug Middleware
 app.use((req, res, next) => {
