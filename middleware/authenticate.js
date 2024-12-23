@@ -19,9 +19,27 @@ module.exports = (req, res, next) => {
         const token = authHeader.split(" ")[1];
         console.log("DEBUG: Extracted Token:", token);
 
+        // Pastikan token tidak kosong
+        if (!token) {
+            console.error("DEBUG: Token missing after Bearer");
+            return res.status(401).json({ 
+                success: false, 
+                message: "Access denied. Token missing." 
+            });
+        }
+
         // Verifikasi token
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         console.log("DEBUG: Token decoded successfully:", decoded);
+
+        // Pastikan token mengandung informasi yang benar
+        if (!decoded || !decoded.id) {
+            console.error("DEBUG: Token does not contain valid user ID.");
+            return res.status(403).json({
+                success: false,
+                message: "Token does not contain valid user information."
+            });
+        }
 
         // Tambahkan informasi pengguna ke request
         req.user = decoded;
