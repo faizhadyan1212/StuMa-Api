@@ -9,7 +9,7 @@ router.post(
     "/",
     authenticate,
     [
-        body("name").notEmpty().withMessage("Name is required"),
+        body("items_name").notEmpty().withMessage("Items Name is required"),
         body("category").notEmpty().withMessage("Category is required"),
         body("description").notEmpty().withMessage("Description is required"),
         body("stock").isInt({ gt: 0 }).withMessage("Stock must be a positive integer"),
@@ -18,27 +18,22 @@ router.post(
     async (req, res) => {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
-            console.error("DEBUG: Validation errors:", errors.array());
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        const { name, category, description, stock, price } = req.body;
+        const { items_name, category, description, stock, price } = req.body;
         const userId = req.user.id;
-
-        console.log("DEBUG: POST /api/items - Request Body:", req.body);
 
         try {
             await db.query(
-                "INSERT INTO items (name, category, description, stock, price, user_id) VALUES (?, ?, ?, ?, ?, ?)",
-                [name, category, description, stock, price, userId]
+                "INSERT INTO items (items_name, category, description, stock, price, user_id) VALUES (?, ?, ?, ?, ?, ?)",
+                [items_name, category, description, stock, price, userId]
             );
-            console.log("DEBUG: Item added successfully");
             res.status(201).json({
                 success: true,
                 message: "Item added successfully",
             });
         } catch (error) {
-            console.error("DEBUG: Error inserting item:", error.message);
             res.status(500).json({
                 success: false,
                 message: "Server error",
@@ -48,31 +43,45 @@ router.post(
     }
 );
 
-// **2. Ambil Semua Item Berdasarkan User ID**
+// **2. Ambil Semua Item dengan Nama Pengguna**
 router.get("/", authenticate, async (req, res) => {
-    const userId = req.user.id;
-
-    console.log("DEBUG: GET /api/items - Fetching items for User ID:", userId);
-
     try {
-        const [rows] = await db.query("SELECT * FROM items WHERE user_id = ?", [userId]);
+        const query = `
+        SELECT 
+            items.id,
+            items.items_name,
+            items.category,
+            items.description,
+            items.stock,
+            items.price,
+            users.name AS seller_name
+        FROM items
+        INNER JOIN users ON items.user_id = users.id
+        `;
+        
+        db.query(query, (err, rows) => {
+            if (err) {
+                return res.status(500).json({
+                    success: false,
+                    message: "Server error",
+                    error: err.message,
+                });
+            }
 
-        if (!rows || rows.length === 0) {
-            console.log("DEBUG: No items found for User ID:", userId);
-            return res.status(200).json({
+            if (!rows || rows.length === 0) {
+                return res.status(200).json({
+                    success: true,
+                    message: "No items found",
+                    data: [],
+                });
+            }
+
+            res.status(200).json({
                 success: true,
-                message: "No items found",
-                data: [],
+                data: rows,
             });
-        }
-
-        console.log("DEBUG: Items fetched successfully for User ID:", userId);
-        res.status(200).json({
-            success: true,
-            data: rows,
         });
     } catch (error) {
-        console.error("DEBUG: Error fetching items:", error.message);
         res.status(500).json({
             success: false,
             message: "Server error",
@@ -81,30 +90,39 @@ router.get("/", authenticate, async (req, res) => {
     }
 });
 
-// **3. Ambil Item Berdasarkan ID**
+// **3. Ambil Item Berdasarkan ID dengan Nama Pengguna**
 router.get("/:id", authenticate, async (req, res) => {
     const itemId = req.params.id;
 
-    console.log("DEBUG: GET /api/items/:id - Fetching item with ID:", itemId);
-
     try {
-        const [rows] = await db.query("SELECT * FROM items WHERE id = ?", [itemId]);
+        const query = `
+        SELECT 
+            items.id,
+            items.items_name,
+            items.category,
+            items.description,
+            items.stock,
+            items.price,
+            users.name AS seller_name
+        FROM items
+        INNER JOIN users ON items.user_id = users.id
+        WHERE items.id = ?
+        `;
+        
+        const [rows] = await db.query(query, [itemId]);
 
         if (!rows || rows.length === 0) {
-            console.warn("DEBUG: Item not found for ID:", itemId);
             return res.status(404).json({
                 success: false,
                 message: "Item not found",
             });
         }
 
-        console.log("DEBUG: Item fetched successfully:", rows[0]);
         res.status(200).json({
             success: true,
             data: rows[0],
         });
     } catch (error) {
-        console.error("DEBUG: Error fetching item:", error.message);
         res.status(500).json({
             success: false,
             message: "Server error",
@@ -113,12 +131,15 @@ router.get("/:id", authenticate, async (req, res) => {
     }
 });
 
+module.exports = router;
+
+
 // **4. Perbarui Item Berdasarkan ID**
 router.put(
     "/:id",
     authenticate,
     [
-        body("name").notEmpty().withMessage("Name is required"),
+        body("items_name").notEmpty().withMessage(" Items Name is required"),
         body("category").notEmpty().withMessage("Category is required"),
         body("description").notEmpty().withMessage("Description is required"),
         body("stock").isInt({ gt: 0 }).withMessage("Stock must be a positive integer"),
@@ -133,15 +154,15 @@ router.put(
 
         const itemId = req.params.id;
         const userId = req.user.id; // Untuk memastikan user yang berhak mengedit item
-        const { name, category, description, stock, price } = req.body;
+        const { items_name, category, description, stock, price } = req.body;
 
         console.log("DEBUG: PUT /api/items/:id - Request Params:", req.params);
         console.log("DEBUG: PUT /api/items/:id - Request Body:", req.body);
 
         try {
             const result = await db.query(
-                "UPDATE items SET name = ?, category = ?, description = ?, stock = ?, price = ? WHERE id = ? AND user_id = ?",
-                [name, category, description, stock, price, itemId, userId]
+                "UPDATE items SET items_name = ?, category = ?, description = ?, stock = ?, price = ? WHERE id = ? AND user_id = ?",
+                [items_name, category, description, stock, price, itemId, userId]
             );
 
             if (result.affectedRows === 0) {
